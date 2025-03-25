@@ -1,70 +1,92 @@
 package ru.kata.spring.boot_security.demo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.kata.spring.boot_security.demo.model.Role;
 import ru.kata.spring.boot_security.demo.model.User;
 import ru.kata.spring.boot_security.demo.service.RoleService;
 import ru.kata.spring.boot_security.demo.service.UserService;
-//import jakarta.validation.Valid;
 
-import javax.validation.Valid;
-import java.security.Principal;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
-
-@Controller
-@RequestMapping("/admin")
+@RestController
+@RequestMapping("/api/admin")
 public class AdminController {
+
     private final UserService userService;
     private final RoleService roleService;
-
 
     @Autowired
     public AdminController(UserService userService, RoleService roleService) {
         this.userService = userService;
         this.roleService = roleService;
-
     }
 
-    @GetMapping
-    //@PreAuthorize("hasRole('ADMIN')")
-    public String adminPanel(Model model, Principal principal) {
+    // Получение всех пользователей
+    @GetMapping("")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userService.getAllUsers();
-        model.addAttribute("users", users);
-        model.addAttribute("roles", roleService.findAll());
-        model.addAttribute("newUser", new User());
-        model.addAttribute("authUser", userService.findByUsername(principal.getName()));
-        //model.addAttribute("userEdit", userService.getUserById(id));
-        //model.addAttribute("users", userService.getAllUsers());
-        return "admin";
+        return ResponseEntity.ok(users);
     }
 
-    @PostMapping
-    //@PreAuthorize("hasRole('ADMIN')")
-    public String addUser(@ModelAttribute("newUser") @Valid User user) {
-        userService.save(user);
-        return "redirect:/admin";
+    // Получение всех ролей
+    @GetMapping("/roles")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<List<Role>> getAllRoles() {
+        List<Role> roles = roleService.findAll();
+        return ResponseEntity.ok(roles);
     }
 
-    @PatchMapping("/user/{id}")
-    public String updateUser(@ModelAttribute("user") @Valid User user, @PathVariable("id") Long id) {
-        userService.update(id, user);
-        return "redirect:/admin";
+    // Получение пользователя по ID
+    @GetMapping("/admin/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<User> getUserById(@PathVariable("id") Long id) {
+        Optional<User> user = Optional.ofNullable(userService.getUserById(id));
+        return user.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    @DeleteMapping("/{id}")
-    public String deleteUser(@PathVariable("id") long id) {
-        userService.delete(id);
-        return "redirect:/admin";
+    // Создание нового пользователя
+    @PostMapping("/admin")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<String> createUser(@RequestBody User user) {
+        try {
+            userService.save(user);
+            return ResponseEntity.status(HttpStatus.CREATED).body("User created successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Failed to create user: " + e.getMessage());
+        }
     }
 
+    // Обновление пользователя
+    @PutMapping("/admin/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<String> updateUser(@PathVariable Long id, @RequestBody User user) {
+        Optional<User> existingUser = Optional.ofNullable(userService.getUserById(id));
+        if (existingUser.isPresent()) {
+            user.setId(id);
+            userService.update(id, user);
+            return ResponseEntity.ok("User updated successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+        }
+    }
 
+    // Удаление пользователя
+    @DeleteMapping("/admin/{id}")
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
+    public ResponseEntity<String> deleteUser(@PathVariable("id") Long id) {
+        Optional<User> existingUser = Optional.ofNullable(userService.getUserById(id));
+        if (existingUser.isPresent()) {
+            userService.delete(id);
+            return ResponseEntity.ok("User deleted successfully.");
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found.");
+        }
+    }
 }

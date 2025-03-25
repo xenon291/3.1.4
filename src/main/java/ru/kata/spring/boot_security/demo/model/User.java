@@ -6,6 +6,7 @@ import javax.persistence.*;
 //import javax.validation.constraints.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
@@ -31,7 +32,7 @@ public class User implements UserDetails {
     private String username;
     private String password;
 
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "users_roles",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -50,16 +51,16 @@ public class User implements UserDetails {
         this.username = username;
         this.password = password;
     }
-//    public User(Long id, String name, String lastName, int age, String email, List<Role> roles, String username, String password) {
-//        this.name = name;
-//        this.lastName = lastName;
-//        this.age = age;
-//        this.email = email;
-//        this.roles = roles;
-//        this.username = username;
-//        this.password = password;
-//        this.id = id;
-//    }
+    public User(Long id, String name, String lastName, int age, String email, List<Role> roles, String username, String password) {
+        this.name = name;
+        this.lastName = lastName;
+        this.age = age;
+        this.email = email;
+        this.roles = roles;
+        this.username = username;
+        this.password = password;
+        this.id = id;
+    }
     public Long getId() {
         return id;
     }
@@ -129,6 +130,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() { return true; }
+
 
 
 }
